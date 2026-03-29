@@ -1,0 +1,299 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap');
+
+@theme {
+  --font-sans: "Poppins", ui-sans-serif, system-ui, sans-serif;
+  --color-brand-red: #ff2e2e;
+  --color-brand-red-bright: #ff0000;
+  --color-brand-red-dark: #8a0000;
+  --color-brand-red-deep: #4a0000;
+  --color-brand-black: #0b0b0b;
+  --border-red: rgba(255, 0, 0, 0.15);
+  --border-red-strong: rgba(255, 0, 0, 0.3);
+  --premium-gradient: radial-gradient(circle at center, #ff0000 0%, #8a0000 50%, #1a0000 100%);
+}
+
+.section-container {
+  width: 100%;
+  margin: 0 auto;
+}
+
+.section-wrapper {
+  padding: 20px;
+  width: 100%;
+}
+
+.inner-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Remove forced structural borders */
+.divider {
+  height: 1px;
+  background: rgba(255, 0, 0, 0.2);
+  margin: 30px 0;
+  width: 100%;
+}
+
+@layer base {
+  * {
+    transition: 0.2s ease;
+  }
+
+  body {
+    @apply font-sans antialiased text-[#bfbfbf];
+    background: radial-gradient(circle at top, #1a0000, #000000 70%);
+    position: relative;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle, rgba(255,0,0,0.08) 0%, transparent 70%);
+    animation: pulseBg 4s infinite;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  body::after {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('https://www.transparenttextures.com/patterns/noise.png');
+    opacity: 0.04;
+    pointer-events: none;
+    z-index: 9999;
+  }
+  
+  h1, h2 {
+    @apply font-black tracking-[-0.5px] text-white;
+    /* Removed red glow from white text as requested */
+    text-shadow: none;
+  }
+
+  section {
+    position: relative;
+  }
+
+  section.glow-section::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    /* Removed border to avoid double lines with section-wrapper */
+    border: none;
+    box-shadow: 0 0 40px rgba(255,0,0,0.03);
+    pointer-events: none;
+    border-radius: inherit;
+  }
+
+  /* Kill any remaining green */
+  *[style*="green"],
+  *[class*="green"] {
+    color: #ff2e2e !important;
+    border-color: #ff2e2e !important;
+  }
+}
+
+@layer utilities {
+  .text-red-primary { @apply text-brand-red; }
+  .text-red-bright { @apply text-brand-red-bright; }
+  .text-red-dark { @apply text-brand-red-dark; }
+  .text-red-deep { @apply text-brand-red-deep; }
+
+  .highlight {
+    @apply text-white font-black bg-brand-red px-2 py-0.5 inline-block mx-1;
+    box-shadow: 0 0 15px rgba(255,0,0,0.4);
+    line-height: 1;
+  }
+
+  .rect-highlight {
+    @apply bg-brand-red text-white px-2 py-0.5 font-black inline-block mx-1;
+    box-shadow: 0 0 15px rgba(255,0,0,0.4);
+    line-height: 1;
+  }
+
+  .gradient-highlight {
+    @apply text-brand-red font-black;
+    text-shadow: 0 0 10px rgba(255,0,0,0.6);
+  }
+
+  .price-money {
+    @apply text-brand-red-bright font-black;
+    text-shadow: 0 0 15px rgba(255,0,0,0.6);
+    animation: pulsePrice 1.5s infinite;
+    display: inline-block;
+  }
+
+  .old-price {
+    @apply text-[#777] line-through;
+  }
+
+  .btn-insane {
+    @apply relative overflow-hidden transition-all duration-300 font-bold uppercase tracking-widest text-white;
+    background: linear-gradient(45deg, #ff0000, #8a0000);
+    box-shadow: 0 0 20px rgba(255,0,0,0.5);
+  }
+
+  .btn-insane:hover {
+    @apply scale-105;
+    box-shadow: 0 0 35px rgba(255,0,0,0.9);
+  }
+
+  .btn-insane::after {
+    content: "";
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(120deg, transparent, rgba(255,255,255,0.3), transparent);
+    left: -100%;
+    top: 0;
+    transition: 0.5s;
+  }
+
+  .btn-insane:hover::after {
+    left: 100%;
+  }
+
+  .card-premium {
+    @apply rounded-2xl transition-all duration-300;
+    background: rgba(15, 15, 15, 0.6);
+    border: 1px solid rgba(255, 0, 0, 0.1);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  }
+
+  .card-premium:hover, .card-premium:active {
+    @apply scale-[1.03];
+    border-color: rgba(255, 0, 0, 0.8);
+    box-shadow: 0 0 40px rgba(255, 0, 0, 0.5);
+    background: rgba(30, 0, 0, 0.9);
+  }
+
+  .video-highlight {
+    @apply border-2 border-[#ff0000] rounded-xl;
+    box-shadow: 0 0 30px rgba(255,0,0,0.5);
+  }
+
+  .urgency-blink {
+    @apply text-[#ff0000] font-bold;
+    animation: blink 1s infinite;
+  }
+
+  @keyframes pulseBg {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 0.6; }
+  }
+
+  @keyframes pulsePrice {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .pulse-red {
+    animation: pulseRed 2s infinite;
+  }
+
+  @keyframes pulseRed {
+    0%, 100% { color: #ff2e2e; text-shadow: 0 0 5px rgba(255, 46, 46, 0.2); }
+    50% { color: #ff0000; text-shadow: 0 0 15px rgba(255, 0, 0, 0.6); }
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .divider {
+    height: 1px;
+    background: rgba(255, 0, 0, 0.2);
+    margin: 30px 0;
+    width: 100%;
+  }
+
+  .vip-card-pulse {
+    position: relative;
+    animation: pulseVIP 2s infinite;
+  }
+
+  @keyframes pulseVIP {
+    0% { box-shadow: 0 0 20px rgba(255,0,0,0.3); }
+    50% { box-shadow: 0 0 40px rgba(255,0,0,0.6); }
+    100% { box-shadow: 0 0 20px rgba(255,0,0,0.3); }
+  }
+
+  .btn-main {
+    background: linear-gradient(90deg, #ff0000, #ff2e2e) !important;
+    font-weight: 800 !important;
+    letter-spacing: 1px !important;
+    box-shadow: 0 0 25px rgba(255,0,0,0.7) !important;
+    animation: pulseBtn 1.5s infinite;
+  }
+
+  @keyframes pulseBtn {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.06); }
+    100% { transform: scale(1); }
+  }
+
+  .video-container-active {
+    position: relative;
+  }
+
+  .video-container-active::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border: 2px solid #ff0000;
+    animation: pulseVideo 2s infinite;
+    pointer-events: none;
+    border-radius: 0.75rem;
+  }
+
+  @keyframes pulseVideo {
+    0% { opacity: 0.4; }
+    50% { opacity: 1; }
+    100% { opacity: 0.4; }
+  }
+
+  .gradient-text {
+    background: linear-gradient(90deg, #ffffff 0%, #ff0000 50%, #660000 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: 0 0 15px rgba(255,0,0,0.3);
+  }
+
+  .timer-premium {
+    background: rgba(255,0,0,0.1);
+    border: 1px solid #ff2e2e;
+    padding: 10px;
+    border-radius: 8px;
+    text-align: center;
+    box-shadow: 0 0 15px rgba(255,0,0,0.3);
+  }
+
+  .card-premium svg {
+    transition: 0.3s;
+  }
+
+  .card-premium:hover svg {
+    transform: scale(1.2);
+    filter: drop-shadow(0 0 8px rgba(255,0,0,0.7));
+  }
+}
