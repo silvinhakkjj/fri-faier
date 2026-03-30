@@ -109,33 +109,44 @@ export default function App() {
 
   const [showStickyButton, setShowStickyButton] = useState(false);
 
-  // Tracking Helper
-  const trackEvent = (eventName: string, params: Record<string, any> = {}) => {
-    if (typeof window !== 'undefined' && (window as any).dataLayer) {
-      // Create a safe copy of params to avoid circular references
-      const safeParams: Record<string, any> = {};
-      
-      if (params && typeof params === 'object') {
-        Object.keys(params).forEach(key => {
-          const value = params[key];
-          if (typeof value !== 'object' || value === null) {
-            safeParams[key] = value;
-          } else if (Array.isArray(value)) {
-            safeParams[key] = value.map(item => (typeof item !== 'object' ? item : '[Object]'));
-          } else {
-            safeParams[key] = '[Object]';
-          }
-        });
-      }
+  const lastTracked = useRef<Record<string, number>>({});
 
-      (window as any).dataLayer.push({
-        event: eventName,
-        ...safeParams,
-        timestamp: new Date().toISOString()
-      });
-      console.log(`[Tracking] ${eventName}`, safeParams);
+  // Tracking Helper
+  const trackEvent = React.useCallback((eventName: string, params: Record<string, any> = {}) => {
+    try {
+      const now = Date.now();
+      // Increased deduplication window to 2000ms for extra safety
+      if (lastTracked.current[eventName] && now - lastTracked.current[eventName] < 2000) {
+        return;
+      }
+      lastTracked.current[eventName] = now;
+
+      if (typeof window !== 'undefined') {
+        // DataLayer (GTM)
+        if ((window as any).dataLayer) {
+          (window as any).dataLayer.push({
+            event: eventName,
+            ...params,
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        // Direct FB Pixel
+        if ((window as any).fbq) {
+          (window as any).fbq('track', eventName === 'initiate_checkout' ? 'InitiateCheckout' : eventName, params);
+        }
+
+        // Direct Gtag
+        if ((window as any).gtag) {
+          (window as any).gtag('event', eventName, params);
+        }
+        
+        console.log(`[Tracking] ${eventName}`, params);
+      }
+    } catch (error) {
+      console.error('[Tracking Error]', error);
     }
-  };
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -147,10 +158,10 @@ export default function App() {
     };
     window.addEventListener('scroll', handleScroll);
 
-    // PageView Tracking
+    // PageView Tracking (Mount only)
     trackEvent('pageview');
 
-    // Wistia Play Tracking
+    // Wistia Play Tracking (Mount only)
     (window as any)._wq = (window as any)._wq || [];
     (window as any)._wq.push({ id: "awrhu4bl2o", onReady: function(video: any) {
       video.bind("play", function() {
@@ -158,6 +169,10 @@ export default function App() {
       });
     }});
 
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
     if (indicatorsRef.current) {
       const activeIndicator = indicatorsRef.current.children[currentIndex] as HTMLElement;
       if (activeIndicator) {
@@ -167,8 +182,6 @@ export default function App() {
         });
       }
     }
-
-    return () => window.removeEventListener('scroll', handleScroll);
   }, [currentIndex]);
 
   // Social Proof Notification Logic
@@ -666,7 +679,7 @@ export default function App() {
 
                 <button 
                   onClick={() => {
-                    trackEvent('lead_basic');
+                    trackEvent('initiate_checkout');
                     setShowUpsell(true);
                   }}
                   className="block w-full bg-zinc-800 hover:bg-zinc-700 text-red-primary font-black py-4 rounded-xl text-center transition-all uppercase text-sm tracking-widest"
@@ -849,7 +862,6 @@ export default function App() {
           >
             <button 
               onClick={() => {
-                trackEvent('initiate_checkout');
                 const offersSection = document.getElementById('offers');
                 if (offersSection) {
                   offersSection.scrollIntoView({ behavior: 'smooth' });
@@ -884,7 +896,6 @@ export default function App() {
         <div className="flex justify-center">
           <button 
             onClick={() => {
-              trackEvent('initiate_checkout');
               const offersSection = document.getElementById('offers');
               if (offersSection) {
                 offersSection.scrollIntoView({ behavior: 'smooth' });
@@ -947,20 +958,26 @@ export default function App() {
               </div>
 
               <div className="space-y-4">
-                <a 
-                  href={CHECKOUT_LINKS.premiumDiscounted}
-                  onClick={() => trackEvent('upsell_accept')}
-                  className="block w-full btn-insane btn-main text-white py-5 rounded-xl text-center font-black uppercase tracking-widest text-sm"
+                <button 
+                  onClick={() => {
+                    trackEvent('upsell_accept');
+                    trackEvent('initiate_checkout', { plan: 'premium_discounted' });
+                    window.location.href = CHECKOUT_LINKS.premiumDiscounted;
+                  }}
+                  className="block w-full btn-insane btn-main text-white py-5 rounded-xl text-center font-black uppercase tracking-widest text-sm cursor-pointer"
                 >
                   Sim! Quero o VIP por R$ 19,90
-                </a>
-                <a 
-                  href={CHECKOUT_LINKS.basic}
-                  onClick={() => trackEvent('upsell_decline')}
-                  className="block w-full text-zinc-500 hover:text-zinc-300 text-center text-[10px] font-bold uppercase tracking-widest transition-colors"
+                </button>
+                <button 
+                  onClick={() => {
+                    trackEvent('upsell_decline');
+                    trackEvent('initiate_checkout', { plan: 'basic' });
+                    window.location.href = CHECKOUT_LINKS.basic;
+                  }}
+                  className="block w-full text-zinc-500 hover:text-zinc-300 text-center text-[10px] font-bold uppercase tracking-widest transition-colors cursor-pointer"
                 >
                   Não, prefiro continuar com o plano de R$ 10,00
-                </a>
+                </button>
               </div>
 
               <div className="mt-6 flex items-center justify-center gap-2 text-[10px] text-zinc-600 font-bold uppercase">
