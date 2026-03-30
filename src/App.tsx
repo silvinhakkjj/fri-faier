@@ -107,6 +107,8 @@ export default function App() {
 
   const indicatorsRef = useRef<HTMLDivElement>(null);
 
+  const [showStickyButton, setShowStickyButton] = useState(false);
+
   // Tracking Helper
   const trackEvent = (eventName: string, params: Record<string, any> = {}) => {
     if (typeof window !== 'undefined' && (window as any).dataLayer) {
@@ -136,6 +138,15 @@ export default function App() {
   };
 
   useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 500) {
+        setShowStickyButton(true);
+      } else {
+        setShowStickyButton(false);
+      }
+    };
+    window.addEventListener('scroll', handleScroll);
+
     // PageView Tracking
     trackEvent('pageview');
 
@@ -156,6 +167,8 @@ export default function App() {
         });
       }
     }
+
+    return () => window.removeEventListener('scroll', handleScroll);
   }, [currentIndex]);
 
   // Social Proof Notification Logic
@@ -278,16 +291,12 @@ export default function App() {
           animate={{ opacity: 1, y: 0 }}
           className="text-3xl sm:text-4xl md:text-7xl uppercase leading-tight md:leading-none mb-4 font-black"
         >
-          ACESSO COMPLETO PARA <span className="rect-highlight">LUCRAR</span> EM TODOS OS APOSTADOS <span className="rect-highlight">HOJE</span>
+          Comece a lucrar até <span className="text-brand-red">300 reais</span> por dia com apostados e recupere seu <span className="rect-highlight">investimento</span> ainda hoje.
         </motion.h1>
         <p className="text-sm sm:text-base md:text-lg font-medium text-zinc-400">
-          O único painel com <span className="rect-highlight">Modo Oculto</span> real para 2026.
+          O único painel com <span className="text-brand-red">Modo Oculto</span> real para 2026.
         </p>
       </header>
-
-      <div className="px-4 max-w-6xl mx-auto">
-        <div className="divider" />
-      </div>
 
       {/* VSL Section */}
       <motion.section 
@@ -308,7 +317,7 @@ export default function App() {
               padding-top:56.25%; 
             }
           `}</style>
-          <wistia-player media-id="awrhu4bl2o" aspect="1.7777777777777777"></wistia-player>
+          <wistia-player media-id="awrhu4bl2o" aspect="1.7777777777777777" autoPlay="false"></wistia-player>
         </div>
         <div className="mt-8 flex justify-center w-full">
           <button 
@@ -341,10 +350,10 @@ export default function App() {
       >
         <div className="text-center mb-12 px-4">
           <h2 className="text-2xl md:text-4xl uppercase mb-2">
-            ACESSO COMPLETO PARA <span className="rect-highlight">LUCRAR</span> EM TODOS OS APOSTADOS <span className="rect-highlight">HOJE</span>
+            VEJA QUEM JÁ ESTÁ <span className="text-brand-red">FORRANDO</span> NOS APOSTADOS <span className="rect-highlight">HOJE</span>
           </h2>
           <p className="text-xs md:text-sm text-zinc-400">
-            Resultados reais de jogadores que confiam no <span className="rect-highlight">Insane Xiters</span>. Mais de 5.000 clientes satisfeitos.
+            Resultados reais de jogadores que confiam no <span className="text-brand-red">Insane Xiters</span>. Mais de 5.000 clientes satisfeitos.
           </p>
           <div className="flex items-center justify-center gap-1 mt-4 text-yellow-500">
             {[...Array(5)].map((_, i) => <Star key={i} className="w-4 h-4 fill-current" />)}
@@ -357,14 +366,14 @@ export default function App() {
             {/* Navigation Arrows */}
             <button 
               onClick={() => scrollCarousel('left')}
-              className="absolute -left-4 md:left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-zinc-900/80 border border-zinc-800 rounded-full flex items-center justify-center text-white hover:bg-red-primary transition-colors md:flex hidden"
+              className="absolute -left-2 md:left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-zinc-900/80 border border-zinc-800 rounded-full flex items-center justify-center text-white hover:bg-red-primary transition-colors"
             >
               <ChevronLeft className="w-6 h-6" />
             </button>
             
             <button 
               onClick={() => scrollCarousel('right')}
-              className="absolute -right-4 md:right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-zinc-900/80 border border-zinc-800 rounded-full flex items-center justify-center text-white hover:bg-red-primary transition-colors md:flex hidden"
+              className="absolute -right-2 md:right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-zinc-900/80 border border-zinc-800 rounded-full flex items-center justify-center text-white hover:bg-red-primary transition-colors"
             >
               <ChevronRight className="w-6 h-6" />
             </button>
@@ -502,10 +511,10 @@ export default function App() {
       >
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-5xl uppercase mb-4">
-            ACESSO COMPLETO PARA <span className="rect-highlight">LUCRAR</span> EM TODOS OS APOSTADOS <span className="rect-highlight">HOJE</span>
+            ACESSO COMPLETO PARA <span className="rect-highlight">LUCRAR</span> EM TODOS OS APOSTADOS <span className="text-brand-red">HOJE</span>
           </h2>
           <p className="text-sm md:text-base text-zinc-400">
-            Ao adquirir o <span className="rect-highlight">Acesso VIP</span>, você não leva apenas o painel. Você recebe um arsenal completo para dominar o jogo.
+            Ao adquirir o <span className="text-brand-red">Acesso VIP</span>, você não leva apenas o painel. Você recebe um arsenal completo para dominar o jogo.
           </p>
         </div>
 
@@ -614,10 +623,10 @@ export default function App() {
       >
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-6xl uppercase mb-4">
-            ACESSO COMPLETO PARA <span className="rect-highlight">LUCRAR</span> EM TODOS OS APOSTADOS <span className="rect-highlight">HOJE</span>
+            <span className="rect-highlight">LUCRE</span> EM TODOS OS <span className="text-brand-red">APOSTADOS</span>
           </h2>
           <p className="font-medium text-zinc-400">
-            Acesso Imediato, pagamento único. Comece a lucrar até <span className="rect-highlight font-bold">300 reais</span> por dia.
+            Acesso Imediato, pagamento único. Comece a lucrar até <span className="text-brand-red font-bold">300 reais</span> por dia.
           </p>
         </div>
 
@@ -667,14 +676,14 @@ export default function App() {
               </div>
 
               {/* Premium Offer */}
-              <div className="bg-linear-to-br from-[#0f0f0f] to-[#1a1a1a] border-2 border-[#ff2e2e] p-8 rounded-3xl relative overflow-hidden shadow-[0_0_25px_rgba(255,0,0,0.2)] transform md:scale-105 z-10 text-center vip-card-pulse">
+              <div className="bg-linear-to-br from-[#0f0f0f] to-[#1a1a1a] border-2 border-[#ff2e2e] p-8 rounded-3xl relative overflow-hidden shadow-[0_0_25px_rgba(255,0,0,0.2)] transform md:scale-105 z-10 text-center vip-card-pulse transition-all duration-300 hover:scale-[1.03] md:hover:scale-[1.08]">
                 <div className="absolute top-4 right-4 bg-[#ff2e2e] text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest animate-pulse">
                   Mais Popular
                 </div>
                 
                 <div className="mb-8">
-                  <div className="flex items-center justify-center gap-2 text-[#ff2e2e] mb-2">
-                    <Trophy className="w-5 h-5 fill-current" />
+                  <div className="flex flex-col items-center justify-center gap-3 text-[#ff2e2e] mb-4">
+                    <Trophy className="w-10 h-10 fill-current" />
                     <h3 className="text-2xl font-black uppercase text-white leading-tight">
                       Acesso Completo <br />
                       <span className="highlight">VIP</span>
@@ -753,6 +762,7 @@ export default function App() {
 
                 <a 
                   href={CHECKOUT_LINKS.premium}
+                  onClick={() => trackEvent('initiate_checkout')}
                   className="block w-full btn-insane btn-main text-white py-5 rounded-xl text-center mb-8"
                 >
                   Sim! Quero Amassar nos Apostados
@@ -776,9 +786,9 @@ export default function App() {
         <div className="bg-[#0f0f0f] border-l-4 border-l-red-600 p-8 rounded-lg flex flex-col md:flex-row items-center gap-8 shadow-2xl">
           <img src={IMAGES.guarantee} alt="Garantia 7 Dias" className="w-32 h-32 object-contain shrink-0" referrerPolicy="no-referrer" />
           <div>
-            <h3 className="text-2xl uppercase mb-4 tracking-[-0.5px] text-red-bright font-black">RISCO <span className="rect-highlight">ZERO</span> PARA VOCÊ</h3>
+            <h3 className="text-2xl uppercase mb-4 tracking-[-0.5px] text-white font-black">RISCO <span className="rect-highlight">ZERO</span> PARA VOCÊ</h3>
             <p className="text-sm leading-relaxed text-zinc-300">
-              Sua satisfação é nossa prioridade. Se por qualquer motivo você não ficar satisfeito com os resultados, garantimos <span className="pulse-red font-black rect-highlight">100% de reembolso</span> do seu investimento em até <span className="text-white font-bold">7 dias</span>. Sem perguntas, sem burocracia.
+              Sua satisfação é nossa prioridade. Se por qualquer motivo você não ficar satisfeito com os resultados, garantimos <span className="font-black rect-highlight">100% de reembolso</span> do seu investimento em até <span className="text-brand-red font-bold">7 dias</span>. Sem perguntas, sem burocracia.
             </p>
           </div>
         </div>
@@ -829,15 +839,30 @@ export default function App() {
       </AnimatePresence>
 
       {/* Floating Buy Button for Mobile */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full px-6 md:hidden">
-        <a 
-          href="#offers"
-          className="flex items-center justify-center gap-3 w-full btn-insane btn-main py-4 rounded-2xl text-white shadow-[0_0_30px_rgba(255,0,0,0.6)] animate-bounce"
-        >
-          <Zap className="w-5 h-5 fill-current" />
-          <span className="font-black uppercase tracking-widest text-sm">Quero Amassar Agora</span>
-        </a>
-      </div>
+      <AnimatePresence>
+        {showStickyButton && (
+          <motion.div 
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full px-6 md:hidden"
+          >
+            <button 
+              onClick={() => {
+                trackEvent('initiate_checkout');
+                const offersSection = document.getElementById('offers');
+                if (offersSection) {
+                  offersSection.scrollIntoView({ behavior: 'smooth' });
+                }
+              }}
+              className="flex items-center justify-center gap-3 w-full btn-insane btn-main py-4 rounded-2xl text-white shadow-[0_0_30px_rgba(255,0,0,0.6)] animate-bounce"
+            >
+              <Zap className="w-5 h-5 fill-current" />
+              <span className="font-black uppercase tracking-widest text-sm">Quero Amassar Agora</span>
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Footer */}
       <motion.footer 
@@ -853,17 +878,23 @@ export default function App() {
         <p className="text-xs md:text-sm mb-8 leading-relaxed text-zinc-400">
           A cada atualização, o jogo muda: sensibilidade, estabilidade, gráficos e desempenho. Quem não se adapta, sente na gameplay.
         </p>
-        <p className="text-xl md:text-2xl font-black text-red-primary uppercase tracking-tight mb-12">
-          Controle. Constância. <span className="rect-highlight">Performance.</span>
+        <p className="text-xl md:text-2xl font-black uppercase tracking-tight mb-12">
+          <span className="text-white">Controle.</span> <span className="gradient-text">Constância.</span> <span className="rect-highlight">Performance.</span>
         </p>
         <div className="flex justify-center">
-          <a 
-            href="#offers"
+          <button 
+            onClick={() => {
+              trackEvent('initiate_checkout');
+              const offersSection = document.getElementById('offers');
+              if (offersSection) {
+                offersSection.scrollIntoView({ behavior: 'smooth' });
+              }
+            }}
             className="inline-flex items-center gap-2 btn-insane btn-main text-white py-4 px-10 rounded-xl"
           >
             <Zap className="w-5 h-5 fill-current" />
             Sim! Quero Amassar nos Apostados
-          </a>
+          </button>
         </div>
         <div className="mt-20 pt-8 border-t border-zinc-800/50 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] text-zinc-500 uppercase font-bold tracking-widest">
           <p>© 2026 INSANE XITERS. TODOS OS DIREITOS RESERVADOS.</p>
