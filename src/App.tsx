@@ -149,6 +149,19 @@ export default function App() {
     }
   }, []);
 
+  const getCheckoutUrl = (baseUrl: string) => {
+    try {
+      const url = new URL(baseUrl);
+      const currentParams = new URLSearchParams(window.location.search);
+      currentParams.forEach((value, key) => {
+        url.searchParams.set(key, value);
+      });
+      return url.toString();
+    } catch (e) {
+      return baseUrl;
+    }
+  };
+
   useEffect(() => {
     const handleScroll = () => {
       if (window.scrollY > 500) {
@@ -778,7 +791,7 @@ export default function App() {
                 <button 
                   onClick={() => {
                     trackEvent('initiate_checkout', { plan: 'premium' });
-                    window.location.href = CHECKOUT_LINKS.premium;
+                    window.location.href = getCheckoutUrl(CHECKOUT_LINKS.premium);
                   }}
                   className="block w-full btn-insane btn-main text-white py-5 rounded-xl text-center mb-8 cursor-pointer"
                 >
@@ -966,7 +979,7 @@ export default function App() {
                   onClick={() => {
                     trackEvent('upsell_accept');
                     trackEvent('initiate_checkout', { plan: 'premium_discounted' });
-                    window.location.href = CHECKOUT_LINKS.premiumDiscounted;
+                    window.location.href = getCheckoutUrl(CHECKOUT_LINKS.premiumDiscounted);
                   }}
                   className="block w-full btn-insane btn-main text-white py-5 rounded-xl text-center font-black uppercase tracking-widest text-sm cursor-pointer"
                 >
@@ -976,7 +989,7 @@ export default function App() {
                   onClick={() => {
                     trackEvent('upsell_decline');
                     trackEvent('initiate_checkout', { plan: 'basic' });
-                    window.location.href = CHECKOUT_LINKS.basic;
+                    window.location.href = getCheckoutUrl(CHECKOUT_LINKS.basic);
                   }}
                   className="block w-full text-zinc-500 hover:text-zinc-300 text-center text-[10px] font-bold uppercase tracking-widest transition-colors cursor-pointer"
                 >
