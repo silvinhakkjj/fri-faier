@@ -112,6 +112,23 @@ export default function App() {
   const lastTracked = useRef<Record<string, number>>({});
   const hasTrackedPageView = useRef(false);
 
+  const getURLParams = React.useCallback(() => {
+    const params = new URLSearchParams(window.location.search);
+    try {
+      const hash = window.location.hash || '';
+      const hashContent = hash.includes('?') ? hash.split('?')[1] : hash.replace(/^#\/?/, '');
+      if (hashContent.includes('=')) {
+        const hashParams = new URLSearchParams(hashContent);
+        hashParams.forEach((v, k) => {
+          if (v && !params.has(k)) params.set(k, v);
+        });
+      }
+    } catch (e) {
+      console.error('[Params Error]', e);
+    }
+    return params;
+  }, []);
+
   // Tracking Helper
   const trackEvent = React.useCallback((eventName: string, params: any = {}) => {
     try {
@@ -160,18 +177,7 @@ export default function App() {
 
       // Auto-include UTMs and other tracking params from URL
       if (typeof window !== 'undefined') {
-        const urlParams = new URLSearchParams(window.location.search);
-        
-        // Also check hash for params
-        const hash = window.location.hash || '';
-        const hashContent = hash.includes('?') ? hash.split('?')[1] : hash.replace(/^#\/?/, '');
-        if (hashContent && hashContent.includes('=')) {
-          const hashParams = new URLSearchParams(hashContent);
-          hashParams.forEach((v, k) => {
-            if (v && !urlParams.has(k)) urlParams.set(k, v);
-          });
-        }
-
+        const urlParams = getURLParams();
         const trackingKeys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'fbclid', 'gclid', 'ttclid', 'src', 'sck'];
         trackingKeys.forEach(key => {
           const val = urlParams.get(key);
@@ -182,8 +188,8 @@ export default function App() {
       }
 
       const now = Date.now();
-      // Don't throttle page_view or view_content as they are critical and might happen close to each other
-      const isThrottled = !['page_view', 'view_content'].includes(eventName);
+      // Don't throttle critical events
+      const isThrottled = !['page_view', 'view_content', 'initiate_checkout', 'upsell_accept', 'upsell_decline'].includes(eventName);
       if (isThrottled && lastTracked.current[eventName] && now - lastTracked.current[eventName] < 2000) {
         return;
       }
@@ -221,35 +227,32 @@ export default function App() {
     } catch (error) {
       console.error('[Tracking Error]', error);
     }
-  }, []);
+  }, [getURLParams]);
 
   const getCheckoutUrl = React.useCallback((baseUrl: string) => {
     try {
-      const url = new URL(window.location.href);
-      const searchParams = new URLSearchParams(url.search);
+      const urlParams = getURLParams();
       
-      // Merge hash params if they exist (common in some redirect flows)
-      const hash = url.hash || '';
-      const hashContent = hash.includes('?') ? hash.split('?')[1] : hash.replace(/^#\/?/, '');
-      if (hashContent && hashContent.includes('=')) {
-        const hashParams = new URLSearchParams(hashContent);
-        hashParams.forEach((v, k) => {
-          if (v && !searchParams.has(k)) searchParams.set(k, v);
-        });
+      // Map utm_source to src if src is missing (common for Hotmart/Checkouts)
+      if (urlParams.has('utm_source') && !urlParams.has('src')) {
+        urlParams.set('src', urlParams.get('utm_source')!);
       }
 
-      const params = searchParams.toString();
-      if (!params) return baseUrl;
+      const paramsString = urlParams.toString();
+      if (!paramsString) return baseUrl;
       
       const separator = baseUrl.includes('?') ? '&' : '?';
-      const finalUrl = `${baseUrl}${separator}${params}`;
+      // Handle potential hash in baseUrl
+      const [urlWithoutHash, urlHash] = baseUrl.split('#');
+      const finalUrl = `${urlWithoutHash}${separator}${paramsString}${urlHash ? '#' + urlHash : ''}`;
+      
       console.log(`[Checkout] Redirecting to: ${finalUrl}`);
       return finalUrl;
     } catch (e) {
       console.error('[Checkout URL Error]', e);
       return baseUrl;
     }
-  }, []);
+  }, [getURLParams]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -794,7 +797,6 @@ export default function App() {
                     setShowUpsell(true);
                   }}
                   className="block w-full bg-zinc-800 hover:bg-zinc-700 text-red-primary font-black py-4 rounded-xl text-center transition-all uppercase text-sm tracking-widest cursor-pointer"
-                  data-fb-disable-tracking="true"
                 >
                   Escolher Plano Básico
                 </button>
