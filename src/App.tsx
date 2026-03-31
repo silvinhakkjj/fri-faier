@@ -123,6 +123,14 @@ export default function App() {
       lastTracked.current[eventName] = now;
 
       if (typeof window !== 'undefined') {
+        // Map to standard FB events
+        const fbEvent = {
+          'initiate_checkout': 'InitiateCheckout',
+          'view_content': 'ViewContent',
+          'lead': 'Lead',
+          'page_view': 'PageView'
+        }[eventName] || eventName;
+
         // DataLayer (GTM)
         if ((window as any).dataLayer) {
           (window as any).dataLayer.push({
@@ -134,7 +142,7 @@ export default function App() {
 
         // Direct FB Pixel
         if ((window as any).fbq) {
-          (window as any).fbq('track', eventName === 'initiate_checkout' ? 'InitiateCheckout' : eventName, params);
+          (window as any).fbq('track', fbEvent, params);
         }
 
         // Direct Gtag
@@ -142,25 +150,42 @@ export default function App() {
           (window as any).gtag('event', eventName, params);
         }
         
-        console.log(`[Tracking] ${eventName}`, params);
+        console.log(`[Tracking] ${eventName} (FB: ${fbEvent})`, params);
       }
     } catch (error) {
       console.error('[Tracking Error]', error);
     }
   }, []);
 
-  const getCheckoutUrl = (baseUrl: string) => {
+  const getCheckoutUrl = React.useCallback((baseUrl: string) => {
     try {
+      console.log(`[Checkout] Processing: ${baseUrl}`);
       const url = new URL(baseUrl);
-      const currentParams = new URLSearchParams(window.location.search);
-      currentParams.forEach((value, key) => {
-        url.searchParams.set(key, value);
-      });
-      return url.toString();
+      
+      // Capture all current params
+      const params = new URLSearchParams(window.location.search);
+      
+      // Capture from hash
+      const hash = window.location.hash;
+      if (hash) {
+        const hashPart = hash.includes('?') ? hash.split('?')[1] : hash.replace(/^#\/?/, '');
+        if (hashPart.includes('=')) {
+          const hashParams = new URLSearchParams(hashPart);
+          hashParams.forEach((v, k) => params.set(k, v));
+        }
+      }
+
+      // Apply to target
+      params.forEach((v, k) => url.searchParams.set(k, v));
+      
+      const finalUrl = url.toString();
+      console.log(`[Checkout] Result: ${finalUrl}`);
+      return finalUrl;
     } catch (e) {
+      console.error('[Checkout Error]', e);
       return baseUrl;
     }
-  };
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -172,11 +197,18 @@ export default function App() {
     };
     window.addEventListener('scroll', handleScroll);
 
+    // Page View Tracking (Once per mount)
+    if (!hasTrackedPageView.current) {
+      trackEvent('page_view');
+      hasTrackedPageView.current = true;
+    }
+
     // Wistia Play Tracking (Mount only)
     const wistiaInit = () => {
       (window as any)._wq = (window as any)._wq || [];
       (window as any)._wq.push({ id: "awrhu4bl2o", onReady: function(video: any) {
         video.bind("play", function() {
+          console.log("[Wistia] Video playing, tracking view_content");
           trackEvent('view_content');
         });
       }});
@@ -185,7 +217,7 @@ export default function App() {
     wistiaInit();
 
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [trackEvent]);
 
   useEffect(() => {
     if (indicatorsRef.current) {
