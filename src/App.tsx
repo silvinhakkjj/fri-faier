@@ -110,6 +110,7 @@ export default function App() {
   const [showStickyButton, setShowStickyButton] = useState(false);
 
   const lastTracked = useRef<Record<string, number>>({});
+  const hasTrackedPageView = useRef(false);
 
   // Tracking Helper
   const trackEvent = React.useCallback((eventName: string, params: Record<string, any> = {}) => {
@@ -158,16 +159,17 @@ export default function App() {
     };
     window.addEventListener('scroll', handleScroll);
 
-    // PageView Tracking (Mount only)
-    trackEvent('pageview');
-
     // Wistia Play Tracking (Mount only)
-    (window as any)._wq = (window as any)._wq || [];
-    (window as any)._wq.push({ id: "awrhu4bl2o", onReady: function(video: any) {
-      video.bind("play", function() {
-        trackEvent('view_content');
-      });
-    }});
+    const wistiaInit = () => {
+      (window as any)._wq = (window as any)._wq || [];
+      (window as any)._wq.push({ id: "awrhu4bl2o", onReady: function(video: any) {
+        video.bind("play", function() {
+          trackEvent('view_content');
+        });
+      }});
+    };
+    
+    wistiaInit();
 
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
@@ -679,10 +681,10 @@ export default function App() {
 
                 <button 
                   onClick={() => {
-                    trackEvent('initiate_checkout');
                     setShowUpsell(true);
                   }}
-                  className="block w-full bg-zinc-800 hover:bg-zinc-700 text-red-primary font-black py-4 rounded-xl text-center transition-all uppercase text-sm tracking-widest"
+                  className="block w-full bg-zinc-800 hover:bg-zinc-700 text-red-primary font-black py-4 rounded-xl text-center transition-all uppercase text-sm tracking-widest cursor-pointer"
+                  data-fb-disable-tracking="true"
                 >
                   Escolher Plano Básico
                 </button>
@@ -773,13 +775,15 @@ export default function App() {
                   </p>
                 </div>
 
-                <a 
-                  href={CHECKOUT_LINKS.premium}
-                  onClick={() => trackEvent('initiate_checkout')}
-                  className="block w-full btn-insane btn-main text-white py-5 rounded-xl text-center mb-8"
+                <button 
+                  onClick={() => {
+                    trackEvent('initiate_checkout', { plan: 'premium' });
+                    window.location.href = CHECKOUT_LINKS.premium;
+                  }}
+                  className="block w-full btn-insane btn-main text-white py-5 rounded-xl text-center mb-8 cursor-pointer"
                 >
                   Sim! Quero Amassar nos Apostados
-                </a>
+                </button>
               </div>
             </div>
       </motion.section>
