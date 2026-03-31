@@ -113,17 +113,70 @@ export default function App() {
   const hasTrackedPageView = useRef(false);
 
   // Tracking Helper
-  const trackEvent = React.useCallback((eventName: string, params: Record<string, any> = {}) => {
+  const trackEvent = React.useCallback((eventName: string, params: any = {}) => {
     try {
+      // Safety check: if eventName is an object (e.g. called as onClick={trackEvent}), ignore it
+      if (typeof eventName !== 'string') {
+        return;
+      }
+
+      // Robust sanitization to avoid circular structures (like DOM elements or Events)
+      const sanitize = (val: any, depth = 0): any => {
+        if (depth > 3) return undefined;
+        if (val === null || val === undefined) return val;
+        if (typeof val === 'number' || typeof val === 'string' || typeof val === 'boolean') return val;
+        
+        // Skip DOM elements and Event objects
+        if (typeof window !== 'undefined' && (val instanceof HTMLElement || val instanceof Event)) return undefined;
+        if (val && typeof val === 'object' && ('nativeEvent' in val || 'target' in val || 'currentTarget' in val)) return undefined;
+        
+        if (Array.isArray(val)) {
+          return val.map(v => sanitize(v, depth + 1)).filter(v => v !== undefined);
+        }
+        
+        if (typeof val === 'object') {
+          // Only allow plain objects to avoid circular references in complex objects
+          const isPlainObject = val.constructor === Object || val.constructor === undefined;
+          if (!isPlainObject) return undefined;
+          
+          const clean: any = {};
+          let hasProps = false;
+          for (const k in val) {
+            if (Object.prototype.hasOwnProperty.call(val, k)) {
+              const v = sanitize(val[k], depth + 1);
+              if (v !== undefined) {
+                clean[k] = v;
+                hasProps = true;
+              }
+            }
+          }
+          return hasProps ? clean : {};
+        }
+        
+        return undefined;
+      };
+
+      const sanitizedParams = sanitize(params) || {};
+
+      // Auto-include UTMs and other tracking params from URL
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        const trackingKeys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'fbclid', 'gclid', 'ttclid', 'src', 'sck'];
+        trackingKeys.forEach(key => {
+          const val = urlParams.get(key);
+          if (val && !sanitizedParams[key]) {
+            sanitizedParams[key] = val;
+          }
+        });
+      }
+
       const now = Date.now();
-      // Increased deduplication window to 2000ms for extra safety
       if (lastTracked.current[eventName] && now - lastTracked.current[eventName] < 2000) {
         return;
       }
       lastTracked.current[eventName] = now;
 
       if (typeof window !== 'undefined') {
-        // Map to standard FB events
         const fbEvent = {
           'initiate_checkout': 'InitiateCheckout',
           'view_content': 'ViewContent',
@@ -135,22 +188,22 @@ export default function App() {
         if ((window as any).dataLayer) {
           (window as any).dataLayer.push({
             event: eventName,
-            ...params,
+            ...sanitizedParams,
             timestamp: new Date().toISOString()
           });
         }
 
         // Direct FB Pixel
         if ((window as any).fbq) {
-          (window as any).fbq('track', fbEvent, params);
+          (window as any).fbq('track', fbEvent, sanitizedParams);
         }
 
         // Direct Gtag
         if ((window as any).gtag) {
-          (window as any).gtag('event', eventName, params);
+          (window as any).gtag('event', eventName, sanitizedParams);
         }
         
-        console.log(`[Tracking] ${eventName} (FB: ${fbEvent})`, params);
+        console.log(`[Tracking] ${eventName}`, sanitizedParams);
       }
     } catch (error) {
       console.error('[Tracking Error]', error);
@@ -159,30 +212,29 @@ export default function App() {
 
   const getCheckoutUrl = React.useCallback((baseUrl: string) => {
     try {
-      console.log(`[Checkout] Processing: ${baseUrl}`);
-      const url = new URL(baseUrl);
+      let params = window.location.search.replace(/^\?/, '');
       
-      // Capture all current params
-      const params = new URLSearchParams(window.location.search);
-      
-      // Capture from hash
-      const hash = window.location.hash;
-      if (hash) {
-        const hashPart = hash.includes('?') ? hash.split('?')[1] : hash.replace(/^#\/?/, '');
-        if (hashPart.includes('=')) {
-          const hashParams = new URLSearchParams(hashPart);
-          hashParams.forEach((v, k) => params.set(k, v));
-        }
+      // Capture hash params if search is empty or to merge them
+      const hash = window.location.hash || '';
+      const hashContent = hash.includes('?') ? hash.split('?')[1] : hash.replace(/^#\/?/, '');
+      if (hashContent && hashContent.includes('=')) {
+        // Simple merge: avoid duplicates if possible
+        const hashParams = new URLSearchParams(hashContent);
+        const searchParams = new URLSearchParams(params);
+        hashParams.forEach((v, k) => {
+          if (v && !searchParams.has(k)) searchParams.set(k, v);
+        });
+        params = searchParams.toString();
       }
 
-      // Apply to target
-      params.forEach((v, k) => url.searchParams.set(k, v));
+      if (!params) return baseUrl;
       
-      const finalUrl = url.toString();
-      console.log(`[Checkout] Result: ${finalUrl}`);
+      const separator = baseUrl.includes('?') ? '&' : '?';
+      const finalUrl = `${baseUrl}${separator}${params}`;
+      console.log(`[Checkout] Redirecting to: ${finalUrl}`);
       return finalUrl;
     } catch (e) {
-      console.error('[Checkout Error]', e);
+      console.error('[Checkout URL Error]', e);
       return baseUrl;
     }
   }, []);
@@ -208,7 +260,8 @@ export default function App() {
       (window as any)._wq = (window as any)._wq || [];
       (window as any)._wq.push({ id: "awrhu4bl2o", onReady: function(video: any) {
         video.bind("play", function() {
-          console.log("[Wistia] Video playing, tracking view_content");
+          console.log("[Wistia] Video playing, tracking page_view and view_content");
+          trackEvent('page_view');
           trackEvent('view_content');
         });
       }});
