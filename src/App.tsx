@@ -161,6 +161,17 @@ export default function App() {
       // Auto-include UTMs and other tracking params from URL
       if (typeof window !== 'undefined') {
         const urlParams = new URLSearchParams(window.location.search);
+        
+        // Also check hash for params
+        const hash = window.location.hash || '';
+        const hashContent = hash.includes('?') ? hash.split('?')[1] : hash.replace(/^#\/?/, '');
+        if (hashContent && hashContent.includes('=')) {
+          const hashParams = new URLSearchParams(hashContent);
+          hashParams.forEach((v, k) => {
+            if (v && !urlParams.has(k)) urlParams.set(k, v);
+          });
+        }
+
         const trackingKeys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'fbclid', 'gclid', 'ttclid', 'src', 'sck'];
         trackingKeys.forEach(key => {
           const val = urlParams.get(key);
@@ -171,7 +182,9 @@ export default function App() {
       }
 
       const now = Date.now();
-      if (lastTracked.current[eventName] && now - lastTracked.current[eventName] < 2000) {
+      // Don't throttle page_view or view_content as they are critical and might happen close to each other
+      const isThrottled = !['page_view', 'view_content'].includes(eventName);
+      if (isThrottled && lastTracked.current[eventName] && now - lastTracked.current[eventName] < 2000) {
         return;
       }
       lastTracked.current[eventName] = now;
@@ -212,21 +225,20 @@ export default function App() {
 
   const getCheckoutUrl = React.useCallback((baseUrl: string) => {
     try {
-      let params = window.location.search.replace(/^\?/, '');
+      const url = new URL(window.location.href);
+      const searchParams = new URLSearchParams(url.search);
       
-      // Capture hash params if search is empty or to merge them
-      const hash = window.location.hash || '';
+      // Merge hash params if they exist (common in some redirect flows)
+      const hash = url.hash || '';
       const hashContent = hash.includes('?') ? hash.split('?')[1] : hash.replace(/^#\/?/, '');
       if (hashContent && hashContent.includes('=')) {
-        // Simple merge: avoid duplicates if possible
         const hashParams = new URLSearchParams(hashContent);
-        const searchParams = new URLSearchParams(params);
         hashParams.forEach((v, k) => {
           if (v && !searchParams.has(k)) searchParams.set(k, v);
         });
-        params = searchParams.toString();
       }
 
+      const params = searchParams.toString();
       if (!params) return baseUrl;
       
       const separator = baseUrl.includes('?') ? '&' : '?';
