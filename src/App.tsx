@@ -113,55 +113,40 @@ export default function App() {
   const lastTracked = useRef<Record<string, number>>({});
   const hasTrackedPageView = useRef(false);
 
-  const getURLParams = React.useCallback(() => {
-    const params = new URLSearchParams(window.location.search);
-    try {
-      // Capture from hash as well, as requested by user for robustness
-      const hash = window.location.hash || '';
-      // Remove leading # and / and ? to get clean parameters
-      const cleanHash = hash.replace(/^#\/?\??/, '');
-      
-      if (cleanHash.includes('=')) {
-        const hashParams = new URLSearchParams(cleanHash);
-        hashParams.forEach((v, k) => {
-          if (v && !params.has(k)) {
-            params.set(k, v);
-          }
-        });
-      }
-    } catch (e) {
-      console.error('[Params Error]', e);
-    }
+  // Nova função de captura de parâmetros (Blinda contra problemas de Hash/Search)
+  const getAllParams = React.useCallback(() => {
+    const search = new URLSearchParams(window.location.search);
+    const hash = new URLSearchParams(window.location.hash.replace('#', ''));
+
+    const params = new URLSearchParams();
+
+    // Mescla search e hash (hash tem prioridade se houver duplicata)
+    search.forEach((v, k) => params.set(k, v));
+    hash.forEach((v, k) => params.set(k, v));
+
+    // Log para debug real no console
+    const captured: Record<string, string> = {};
+    params.forEach((v, k) => captured[k] = v);
+    console.log("CAPTURED PARAMS:", captured);
+
     return params;
   }, []);
 
   // Tracking Helper
   const trackEvent = React.useCallback((eventName: string, params: any = {}) => {
     try {
-      // Safety check: if eventName is an object (e.g. called as onClick={trackEvent}), ignore it
-      if (typeof eventName !== 'string') {
-        return;
-      }
+      if (typeof eventName !== 'string') return;
 
-      // Robust sanitization to avoid circular structures (like DOM elements or Events)
       const sanitize = (val: any, depth = 0): any => {
         if (depth > 3) return undefined;
         if (val === null || val === undefined) return val;
         if (typeof val === 'number' || typeof val === 'string' || typeof val === 'boolean') return val;
-        
-        // Skip DOM elements and Event objects
         if (typeof window !== 'undefined' && (val instanceof HTMLElement || val instanceof Event)) return undefined;
         if (val && typeof val === 'object' && ('nativeEvent' in val || 'target' in val || 'currentTarget' in val)) return undefined;
-        
-        if (Array.isArray(val)) {
-          return val.map(v => sanitize(v, depth + 1)).filter(v => v !== undefined);
-        }
-        
+        if (Array.isArray(val)) return val.map(v => sanitize(v, depth + 1)).filter(v => v !== undefined);
         if (typeof val === 'object') {
-          // Only allow plain objects to avoid circular references in complex objects
           const isPlainObject = val.constructor === Object || val.constructor === undefined;
           if (!isPlainObject) return undefined;
-          
           const clean: any = {};
           let hasProps = false;
           for (const k in val) {
@@ -175,15 +160,13 @@ export default function App() {
           }
           return hasProps ? clean : {};
         }
-        
         return undefined;
       };
 
       const sanitizedParams = sanitize(params) || {};
 
-      // Auto-include UTMs and other tracking params from URL
       if (typeof window !== 'undefined') {
-        const urlParams = getURLParams();
+        const urlParams = getAllParams();
         const trackingKeys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'fbclid', 'gclid', 'ttclid', 'src', 'sck'];
         trackingKeys.forEach(key => {
           const val = urlParams.get(key);
@@ -194,11 +177,8 @@ export default function App() {
       }
 
       const now = Date.now();
-      // Don't throttle critical events
       const isThrottled = !['page_view', 'view_content', 'initiate_checkout', 'back_button_redirect', 'exit_intent_show'].includes(eventName);
-      if (isThrottled && lastTracked.current[eventName] && now - lastTracked.current[eventName] < 2000) {
-        return;
-      }
+      if (isThrottled && lastTracked.current[eventName] && now - lastTracked.current[eventName] < 2000) return;
       lastTracked.current[eventName] = now;
 
       if (typeof window !== 'undefined') {
@@ -209,7 +189,6 @@ export default function App() {
           'page_view': 'PageView'
         }[eventName] || eventName;
 
-        // DataLayer (GTM)
         if ((window as any).dataLayer) {
           (window as any).dataLayer.push({
             event: eventName,
@@ -217,49 +196,39 @@ export default function App() {
             timestamp: new Date().toISOString()
           });
         }
-
-        // Direct FB Pixel
-        if ((window as any).fbq) {
-          (window as any).fbq('track', fbEvent, sanitizedParams);
-        }
-
-        // Direct Gtag
-        if ((window as any).gtag) {
-          (window as any).gtag('event', eventName, sanitizedParams);
-        }
+        if ((window as any).fbq) (window as any).fbq('track', fbEvent, sanitizedParams);
+        if ((window as any).gtag) (window as any).gtag('event', eventName, sanitizedParams);
         
         console.log(`[Tracking] ${eventName}`, sanitizedParams);
       }
     } catch (error) {
       console.error('[Tracking Error]', error);
     }
-  }, [getURLParams]);
+  }, [getAllParams]);
 
   const getCheckoutUrl = React.useCallback((baseUrl: string) => {
     try {
-      const urlParams = getURLParams();
+      const params = getAllParams();
       
-      // Map utm_source to src if src is missing (common for Hotmart/Checkouts)
-      if (urlParams.has('utm_source') && !urlParams.has('src')) {
-        urlParams.set('src', urlParams.get('utm_source')!);
+      if (params.get('utm_source') && !params.get('src')) {
+        params.set('src', params.get('utm_source')!);
       }
 
-      // Use URL API for bulletproof parameter injection
       const url = new URL(baseUrl);
-      urlParams.forEach((value, key) => {
+      params.forEach((value, key) => {
         if (value) {
           url.searchParams.set(key, value);
         }
       });
       
       const finalUrl = url.toString();
-      console.log(`[Checkout] Redirecting to: ${finalUrl}`);
+      console.log("FINAL URL:", finalUrl);
       return finalUrl;
     } catch (e) {
       console.error('[Checkout URL Error]', e);
       return baseUrl;
     }
-  }, [getURLParams]);
+  }, [getAllParams]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -883,8 +852,10 @@ export default function App() {
 
                 <button 
                   onClick={() => {
+                    const finalUrl = getCheckoutUrl(CHECKOUT_LINKS.premium);
+                    console.log("REDIRECT (Main):", finalUrl);
                     trackEvent('initiate_checkout', { plan: 'premium' });
-                    window.location.href = getCheckoutUrl(CHECKOUT_LINKS.premium);
+                    window.location.href = finalUrl;
                   }}
                   className="block w-full btn-insane btn-main text-white py-5 rounded-xl text-center mb-8 cursor-pointer"
                 >
@@ -986,6 +957,25 @@ export default function App() {
         )}
       </AnimatePresence>
 
+      {/* Debug Section (Temporary) */}
+      <div className="py-10 px-4 bg-zinc-950 border-t border-zinc-900 text-center">
+        <p className="text-[10px] text-zinc-600 uppercase font-bold mb-4">Área de Teste (Debug)</p>
+        <div className="flex flex-wrap justify-center gap-4">
+          <button 
+            onClick={() => { window.location.href = window.location.href; }}
+            className="px-4 py-2 bg-zinc-900 text-zinc-500 text-[10px] rounded hover:bg-zinc-800 transition-colors"
+          >
+            TESTE 1 (RELOAD)
+          </button>
+          <button 
+            onClick={() => { window.location.href = 'https://pay.insanexiters.shop/checkout/?utm_source=teste_direto'; }}
+            className="px-4 py-2 bg-zinc-900 text-zinc-500 text-[10px] rounded hover:bg-zinc-800 transition-colors"
+          >
+            TESTE 2 (UTM DIRETO)
+          </button>
+        </div>
+      </div>
+
       {/* Footer */}
       <motion.footer 
         initial={{ opacity: 0, y: 30 }}
@@ -1070,9 +1060,11 @@ export default function App() {
               <div className="space-y-4">
                 <button 
                   onClick={() => {
+                    const finalUrl = getCheckoutUrl(CHECKOUT_LINKS.premiumDiscounted);
+                    console.log("REDIRECT (Exit Intent):", finalUrl);
                     trackEvent('exit_intent_accept');
                     trackEvent('initiate_checkout', { plan: 'premium_discounted_exit' });
-                    window.location.href = getCheckoutUrl(CHECKOUT_LINKS.premiumDiscounted);
+                    window.location.href = finalUrl;
                   }}
                   className="block w-full btn-insane btn-main text-white py-5 rounded-xl text-center font-black uppercase tracking-widest text-sm cursor-pointer"
                 >
