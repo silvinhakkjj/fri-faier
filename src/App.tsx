@@ -97,7 +97,8 @@ const FAQItem = ({ question, answer }: { question: string, answer: string, key?:
 
 export default function App() {
   const [timeLeft, setTimeLeft] = useState(809); // 13:29 in seconds
-  const [showUpsell, setShowUpsell] = useState(false);
+  const [showExitPopup, setShowExitPopup] = useState(false);
+  const hasShownExitPopup = useRef(false);
   const [notification, setNotification] = useState<{ name: string, plan: string } | null>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -189,7 +190,7 @@ export default function App() {
 
       const now = Date.now();
       // Don't throttle critical events
-      const isThrottled = !['page_view', 'view_content', 'initiate_checkout', 'upsell_accept', 'upsell_decline'].includes(eventName);
+      const isThrottled = !['page_view', 'view_content', 'initiate_checkout', 'back_button_redirect', 'exit_intent_show'].includes(eventName);
       if (isThrottled && lastTracked.current[eventName] && now - lastTracked.current[eventName] < 2000) {
         return;
       }
@@ -284,8 +285,39 @@ export default function App() {
     
     wistiaInit();
 
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [trackEvent]);
+    // Exit Intent Logic
+    const handleExitIntent = (e: MouseEvent) => {
+      if (e.clientY <= 0 && !hasShownExitPopup.current) {
+        setShowExitPopup(true);
+        hasShownExitPopup.current = true;
+        trackEvent('exit_intent_show');
+      }
+    };
+
+    document.addEventListener('mouseleave', handleExitIntent);
+
+    // Back Button Redirect Logic (Mobile Back Button Capture)
+    const backUrl = getCheckoutUrl(CHECKOUT_LINKS.premiumDiscounted);
+    
+    // Push states to history
+    window.history.pushState({ page: 1 }, "", window.location.href);
+    window.history.pushState({ page: 2 }, "", window.location.href);
+
+    const handlePopState = (event: PopStateEvent) => {
+      if (event.state && event.state.page === 1) {
+        trackEvent('back_button_redirect');
+        window.location.href = backUrl;
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      document.removeEventListener('mouseleave', handleExitIntent);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [trackEvent, getCheckoutUrl]);
 
   useEffect(() => {
     if (indicatorsRef.current) {
@@ -316,7 +348,7 @@ export default function App() {
       "Kauan T.", "Luan H.", "Mário Q.", "Natan W.", "Otávio K.", "Pietro G.", "Queiroz S.", "Ruan M.", "Saulo R.", "Túlio B."
     ];
 
-    const plans = ["Acesso Básico", "Acesso VIP", "Acesso VIP"]; // Weighted towards VIP
+    const plans = ["Acesso VIP"]; // Only VIP now
 
     const showNotification = () => {
       const randomName = names[Math.floor(Math.random() * names.length)];
@@ -758,52 +790,9 @@ export default function App() {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-12 items-center">
-              {/* Basic Offer */}
-              <div className="card-premium bg-zinc-900/30 border border-zinc-800/50 p-8 rounded-3xl relative overflow-hidden transition-all text-center">
-                <div className="mb-8">
-                  <h3 className="text-2xl font-black text-zinc-400 uppercase mb-2">Plano Básico</h3>
-                  <p className="text-sm text-zinc-500">Acesso essencial ao painel FFH4X.</p>
-                </div>
-
-                <div className="relative mb-8 rounded-2xl overflow-hidden border border-zinc-800/50 aspect-square opacity-80">
-                  <img src={IMAGES.mockupBasic} alt="Mockup Básico" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                </div>
-                
-                <div className="mb-8">
-                  <p className="old-price text-sm mx-auto">De R$ 56,00</p>
-                  <div className="flex flex-col items-center gap-1">
-                    <span className="text-4xl font-black text-red-primary">R$ 10,00</span>
-                    <span className="text-zinc-500 text-[10px] font-bold uppercase">Pagamento Único</span>
-                  </div>
-                </div>
-
-                <ul className="space-y-4 mb-10">
-                  {[
-                    "Painel FFH4X Atualizado",
-                    "Antiban Real-time",
-                    "Ajuste de Sensibilidade",
-                    "Suporte via E-mail"
-                  ].map((item, i) => (
-                    <li key={i} className="flex items-center gap-3 text-sm text-zinc-400">
-                      <CheckCircle2 className="w-4 h-4 text-zinc-600" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-
-                <button 
-                  onClick={() => {
-                    setShowUpsell(true);
-                  }}
-                  className="block w-full bg-zinc-800 hover:bg-zinc-700 text-red-primary font-black py-4 rounded-xl text-center transition-all uppercase text-sm tracking-widest cursor-pointer"
-                >
-                  Escolher Plano Básico
-                </button>
-              </div>
-
+        <div className="flex justify-center">
               {/* Premium Offer */}
-              <div className="bg-linear-to-br from-[#0f0f0f] to-[#1a1a1a] border-2 border-[#ff2e2e] p-8 rounded-3xl relative overflow-hidden shadow-[0_0_25px_rgba(255,0,0,0.2)] transform md:scale-105 z-10 text-center vip-card-pulse transition-all duration-300 hover:scale-[1.03] md:hover:scale-[1.08]">
+              <div className="max-w-md w-full bg-linear-to-br from-[#0f0f0f] to-[#1a1a1a] border-2 border-[#ff2e2e] p-8 rounded-3xl relative overflow-hidden shadow-[0_0_25px_rgba(255,0,0,0.2)] transform z-10 text-center vip-card-pulse transition-all duration-300 hover:scale-[1.03]">
                 <div className="absolute top-4 right-4 bg-[#ff2e2e] text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest animate-pulse">
                   Mais Popular
                 </div>
@@ -1031,9 +1020,9 @@ export default function App() {
           </div>
         </div>
       </motion.footer>
-      {/* Upsell Popup */}
+      {/* Exit Intent Popup */}
       <AnimatePresence>
-        {showUpsell && (
+        {showExitPopup && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
             <motion.div 
               initial={{ scale: 0.9, opacity: 0 }}
@@ -1042,7 +1031,7 @@ export default function App() {
               className="bg-zinc-900 border-2 border-red-primary max-w-md w-full p-8 rounded-3xl relative overflow-hidden shadow-[0_0_50px_rgba(255,0,0,0.3)]"
             >
               <button 
-                onClick={() => setShowUpsell(false)}
+                onClick={() => setShowExitPopup(false)}
                 className="absolute top-4 right-4 text-zinc-500 hover:text-white transition-colors"
               >
                 <X className="w-6 h-6" />
@@ -1054,10 +1043,10 @@ export default function App() {
                 </div>
                 <h3 className="text-2xl font-black text-white uppercase leading-tight mb-2">
                   ESPERA! <br />
-                  <span className="text-red-primary rect-highlight">OFERTA ESPECIAL</span>
+                  <span className="text-red-primary rect-highlight">NÃO VÁ EMBORA</span>
                 </h3>
                 <p className="text-zinc-400 text-sm">
-                  Vimos que você escolheu o plano básico. Por apenas mais <span className="text-white font-bold">R$ 9,90</span>, você pode levar o <span className="rect-highlight">PLANO VIP COMPLETO</span> com todos os bônus!
+                  Liberei um desconto exclusivo para você não perder essa oportunidade. Leve o <span className="rect-highlight">PLANO VIP COMPLETO</span> agora mesmo!
                 </p>
               </div>
 
@@ -1076,8 +1065,8 @@ export default function App() {
               <div className="space-y-4">
                 <button 
                   onClick={() => {
-                    trackEvent('upsell_accept');
-                    trackEvent('initiate_checkout', { plan: 'premium_discounted' });
+                    trackEvent('exit_intent_accept');
+                    trackEvent('initiate_checkout', { plan: 'premium_discounted_exit' });
                     window.location.href = getCheckoutUrl(CHECKOUT_LINKS.premiumDiscounted);
                   }}
                   className="block w-full btn-insane btn-main text-white py-5 rounded-xl text-center font-black uppercase tracking-widest text-sm cursor-pointer"
@@ -1085,14 +1074,10 @@ export default function App() {
                   Sim! Quero o VIP por R$ 19,90
                 </button>
                 <button 
-                  onClick={() => {
-                    trackEvent('upsell_decline');
-                    trackEvent('initiate_checkout', { plan: 'basic' });
-                    window.location.href = getCheckoutUrl(CHECKOUT_LINKS.basic);
-                  }}
+                  onClick={() => setShowExitPopup(false)}
                   className="block w-full text-zinc-500 hover:text-zinc-300 text-center text-[10px] font-bold uppercase tracking-widest transition-colors cursor-pointer"
                 >
-                  Não, prefiro continuar com o plano de R$ 10,00
+                  Não, prefiro perder essa oportunidade
                 </button>
               </div>
 
