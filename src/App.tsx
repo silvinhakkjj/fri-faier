@@ -116,12 +116,17 @@ export default function App() {
   const getURLParams = React.useCallback(() => {
     const params = new URLSearchParams(window.location.search);
     try {
+      // Capture from hash as well, as requested by user for robustness
       const hash = window.location.hash || '';
-      const hashContent = hash.includes('?') ? hash.split('?')[1] : hash.replace(/^#\/?/, '');
-      if (hashContent.includes('=')) {
-        const hashParams = new URLSearchParams(hashContent);
+      // Remove leading # and / and ? to get clean parameters
+      const cleanHash = hash.replace(/^#\/?\??/, '');
+      
+      if (cleanHash.includes('=')) {
+        const hashParams = new URLSearchParams(cleanHash);
         hashParams.forEach((v, k) => {
-          if (v && !params.has(k)) params.set(k, v);
+          if (v && !params.has(k)) {
+            params.set(k, v);
+          }
         });
       }
     } catch (e) {
@@ -239,14 +244,15 @@ export default function App() {
         urlParams.set('src', urlParams.get('utm_source')!);
       }
 
-      const paramsString = urlParams.toString();
-      if (!paramsString) return baseUrl;
+      // Use URL API for bulletproof parameter injection
+      const url = new URL(baseUrl);
+      urlParams.forEach((value, key) => {
+        if (value) {
+          url.searchParams.set(key, value);
+        }
+      });
       
-      const separator = baseUrl.includes('?') ? '&' : '?';
-      // Handle potential hash in baseUrl
-      const [urlWithoutHash, urlHash] = baseUrl.split('#');
-      const finalUrl = `${urlWithoutHash}${separator}${paramsString}${urlHash ? '#' + urlHash : ''}`;
-      
+      const finalUrl = url.toString();
       console.log(`[Checkout] Redirecting to: ${finalUrl}`);
       return finalUrl;
     } catch (e) {
@@ -297,16 +303,15 @@ export default function App() {
     document.addEventListener('mouseleave', handleExitIntent);
 
     // Back Button Redirect Logic (Mobile Back Button Capture)
-    const backUrl = getCheckoutUrl(CHECKOUT_LINKS.premiumDiscounted);
-    
-    // Push states to history
+    // Push states to history to trap the back button
     window.history.pushState({ page: 1 }, "", window.location.href);
     window.history.pushState({ page: 2 }, "", window.location.href);
 
     const handlePopState = (event: PopStateEvent) => {
       if (event.state && event.state.page === 1) {
         trackEvent('back_button_redirect');
-        window.location.href = backUrl;
+        const dynamicBackUrl = getCheckoutUrl(CHECKOUT_LINKS.premiumDiscounted);
+        window.location.href = dynamicBackUrl;
       }
     };
 
