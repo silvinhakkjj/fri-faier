@@ -722,14 +722,12 @@ export default function App() {
                   </p>
                 </div>
 
-                <button 
-                  onClick={() => {
-                    window.location.href = CHECKOUT_LINKS.premium;
-                  }}
-                  className="block w-full btn-insane btn-main text-white py-5 rounded-xl text-center mb-8 cursor-pointer"
+                <a 
+                  href={CHECKOUT_LINKS.premium}
+                  className="block w-full btn-insane btn-main text-white py-5 rounded-xl text-center mb-8 cursor-pointer no-underline"
                 >
                   Sim! Quero Amassar nos Apostados
-                </button>
+                </a>
               </div>
             </div>
       </motion.section>
@@ -908,14 +906,12 @@ export default function App() {
               </div>
 
               <div className="space-y-4">
-                <button 
-                  onClick={() => {
-                    window.location.href = CHECKOUT_LINKS.premiumDiscounted;
-                  }}
-                  className="block w-full btn-insane btn-main text-white py-5 rounded-xl text-center font-black uppercase tracking-widest text-sm cursor-pointer"
+                <a 
+                  href={CHECKOUT_LINKS.premiumDiscounted}
+                  className="block w-full btn-insane btn-main text-white py-5 rounded-xl text-center font-black uppercase tracking-widest text-sm cursor-pointer no-underline"
                 >
                   Sim! Quero o VIP por R$ 19,90
-                </button>
+                </a>
                 <button 
                   onClick={() => setShowExitPopup(false)}
                   className="block w-full text-zinc-500 hover:text-zinc-300 text-center text-[10px] font-bold uppercase tracking-widest transition-colors cursor-pointer"
