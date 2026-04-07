@@ -110,126 +110,6 @@ export default function App() {
 
   const [showStickyButton, setShowStickyButton] = useState(false);
 
-  const lastTracked = useRef<Record<string, number>>({});
-  const hasTrackedPageView = useRef(false);
-
-  // Nova função de captura de parâmetros (Blinda contra problemas de Hash/Search)
-  const getAllParams = React.useCallback(() => {
-    const search = new URLSearchParams(window.location.search);
-    const hash = new URLSearchParams(window.location.hash.replace('#', ''));
-
-    const params = new URLSearchParams();
-
-    // Mescla search e hash (hash tem prioridade se houver duplicata)
-    search.forEach((v, k) => params.set(k, v));
-    hash.forEach((v, k) => params.set(k, v));
-
-    // Log para debug real no console
-    const captured: Record<string, string> = {};
-    params.forEach((v, k) => captured[k] = v);
-    console.log("CAPTURED PARAMS:", captured);
-
-    return params;
-  }, []);
-
-  // Tracking Helper
-  const trackEvent = React.useCallback((eventName: string, params: any = {}) => {
-    try {
-      if (typeof eventName !== 'string') return;
-
-      const sanitize = (val: any, depth = 0): any => {
-        if (depth > 3) return undefined;
-        if (val === null || val === undefined) return val;
-        if (typeof val === 'number' || typeof val === 'string' || typeof val === 'boolean') return val;
-        if (typeof window !== 'undefined' && (val instanceof HTMLElement || val instanceof Event)) return undefined;
-        if (val && typeof val === 'object' && ('nativeEvent' in val || 'target' in val || 'currentTarget' in val)) return undefined;
-        if (Array.isArray(val)) return val.map(v => sanitize(v, depth + 1)).filter(v => v !== undefined);
-        if (typeof val === 'object') {
-          const isPlainObject = val.constructor === Object || val.constructor === undefined;
-          if (!isPlainObject) return undefined;
-          const clean: any = {};
-          let hasProps = false;
-          for (const k in val) {
-            if (Object.prototype.hasOwnProperty.call(val, k)) {
-              const v = sanitize(val[k], depth + 1);
-              if (v !== undefined) {
-                clean[k] = v;
-                hasProps = true;
-              }
-            }
-          }
-          return hasProps ? clean : {};
-        }
-        return undefined;
-      };
-
-      const sanitizedParams = sanitize(params) || {};
-
-      if (typeof window !== 'undefined') {
-        const urlParams = getAllParams();
-        const trackingKeys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'fbclid', 'gclid', 'ttclid', 'src', 'sck'];
-        trackingKeys.forEach(key => {
-          const val = urlParams.get(key);
-          if (val && !sanitizedParams[key]) {
-            sanitizedParams[key] = val;
-          }
-        });
-      }
-
-      const now = Date.now();
-      const isThrottled = !['page_view', 'view_content', 'initiate_checkout', 'back_button_redirect', 'exit_intent_show'].includes(eventName);
-      if (isThrottled && lastTracked.current[eventName] && now - lastTracked.current[eventName] < 2000) return;
-      lastTracked.current[eventName] = now;
-
-      if (typeof window !== 'undefined') {
-        const fbEvent = {
-          'initiate_checkout': 'InitiateCheckout',
-          'view_content': 'ViewContent',
-          'lead': 'Lead',
-          'page_view': 'PageView'
-        }[eventName] || eventName;
-
-        if ((window as any).dataLayer) {
-          (window as any).dataLayer.push({
-            event: eventName,
-            ...sanitizedParams,
-            timestamp: new Date().toISOString()
-          });
-        }
-        if ((window as any).fbq) (window as any).fbq('track', fbEvent, sanitizedParams);
-        if ((window as any).gtag) (window as any).gtag('event', eventName, sanitizedParams);
-        
-        console.log(`[Tracking] ${eventName}`, sanitizedParams);
-      }
-    } catch (error) {
-      console.error('[Tracking Error]', error);
-    }
-  }, [getAllParams]);
-
-  const getCheckoutUrl = React.useCallback((baseUrl: string) => {
-    try {
-      const params = getAllParams();
-      
-      if (params.get('utm_source') && !params.get('src')) {
-        params.set('src', params.get('utm_source')!);
-      }
-
-      const url = new URL(baseUrl);
-      params.forEach((value, key) => {
-        if (value) {
-          url.searchParams.set(key, value);
-        }
-      });
-      
-      const finalUrl = url.toString();
-      console.log("FINAL URL:", finalUrl);
-      return finalUrl;
-    } catch (e) {
-      console.error('[Checkout URL Error]', e);
-      return baseUrl;
-    }
-  }, [getAllParams]);
-
   useEffect(() => {
     const handleScroll = () => {
       if (window.scrollY > 500) {
@@ -240,58 +120,21 @@ export default function App() {
     };
     window.addEventListener('scroll', handleScroll);
 
-    // Page View Tracking (Once per mount)
-    if (!hasTrackedPageView.current) {
-      trackEvent('page_view');
-      hasTrackedPageView.current = true;
-    }
-
-    // Wistia Play Tracking (Mount only)
-    const wistiaInit = () => {
-      (window as any)._wq = (window as any)._wq || [];
-      (window as any)._wq.push({ id: "awrhu4bl2o", onReady: function(video: any) {
-        video.bind("play", function() {
-          console.log("[Wistia] Video playing, tracking page_view and view_content");
-          trackEvent('page_view');
-          trackEvent('view_content');
-        });
-      }});
-    };
-    
-    wistiaInit();
-
     // Exit Intent Logic
     const handleExitIntent = (e: MouseEvent) => {
       if (e.clientY <= 0 && !hasShownExitPopup.current) {
         setShowExitPopup(true);
         hasShownExitPopup.current = true;
-        trackEvent('exit_intent_show');
       }
     };
 
     document.addEventListener('mouseleave', handleExitIntent);
 
-    // Back Button Redirect Logic (Mobile Back Button Capture)
-    // Push states to history to trap the back button
-    window.history.pushState({ page: 1 }, "", window.location.href);
-    window.history.pushState({ page: 2 }, "", window.location.href);
-
-    const handlePopState = (event: PopStateEvent) => {
-      if (event.state && event.state.page === 1) {
-        trackEvent('back_button_redirect');
-        const dynamicBackUrl = getCheckoutUrl(CHECKOUT_LINKS.premiumDiscounted);
-        window.location.href = dynamicBackUrl;
-      }
-    };
-
-    window.addEventListener('popstate', handlePopState);
-
     return () => {
       window.removeEventListener('scroll', handleScroll);
       document.removeEventListener('mouseleave', handleExitIntent);
-      window.removeEventListener('popstate', handlePopState);
     };
-  }, [trackEvent, getCheckoutUrl]);
+  }, []);
 
   useEffect(() => {
     if (indicatorsRef.current) {
@@ -365,15 +208,25 @@ export default function App() {
 
   const handleMouseUp = () => {
     if (!carouselRef.current) return;
+    const container = carouselRef.current;
+    const firstCard = container.firstElementChild as HTMLElement;
+    if (!firstCard) {
+      isDragging.current = false;
+      container.style.scrollBehavior = 'smooth';
+      container.style.cursor = 'grab';
+      return;
+    }
+    
+    const cardWidth = firstCard.offsetWidth;
     isDragging.current = false;
-    carouselRef.current.style.scrollBehavior = 'smooth';
-    carouselRef.current.style.cursor = 'grab';
+    container.style.scrollBehavior = 'smooth';
+    container.style.cursor = 'grab';
     
     // Snap to closest card after drag
-    const index = Math.round(carouselRef.current.scrollLeft / carouselRef.current.offsetWidth);
+    const index = Math.round(container.scrollLeft / cardWidth);
     setCurrentIndex(index);
-    carouselRef.current.scrollTo({
-      left: index * carouselRef.current.offsetWidth,
+    container.scrollTo({
+      left: index * cardWidth,
       behavior: 'smooth'
     });
   };
@@ -387,19 +240,23 @@ export default function App() {
   };
 
   const scrollCarousel = (direction: 'left' | 'right') => {
+    if (!carouselRef.current) return;
+    
+    const container = carouselRef.current;
+    const firstCard = container.firstElementChild as HTMLElement;
+    if (!firstCard) return;
+    
+    const cardWidth = firstCard.offsetWidth;
     const newIndex = direction === 'left' 
       ? Math.max(0, currentIndex - 1) 
       : Math.min(IMAGES.testimonials.length - 1, currentIndex + 1);
     
     setCurrentIndex(newIndex);
     
-    if (carouselRef.current) {
-      const cardWidth = carouselRef.current.offsetWidth;
-      carouselRef.current.scrollTo({
-        left: newIndex * cardWidth,
-        behavior: 'smooth'
-      });
-    }
+    container.scrollTo({
+      left: newIndex * cardWidth,
+      behavior: 'smooth'
+    });
   };
 
   useEffect(() => {
@@ -456,7 +313,6 @@ export default function App() {
         <div className="mt-8 flex justify-center w-full">
           <button 
             onClick={() => {
-              trackEvent('lead');
               const offersSection = document.getElementById('offers');
               if (offersSection) {
                 offersSection.scrollIntoView({ behavior: 'smooth' });
@@ -496,7 +352,7 @@ export default function App() {
           <p className="text-red-bright text-[10px] mt-2 font-bold animate-pulse">» Arrasta pro lado e veja »</p>
         </div>
 
-        <div className="relative max-w-[320px] md:max-w-6xl mx-auto px-4 group">
+        <div className="relative max-w-6xl mx-auto px-4 group">
             {/* Navigation Arrows */}
             <button 
               onClick={() => scrollCarousel('left')}
@@ -522,14 +378,17 @@ export default function App() {
               onScroll={(e) => {
                 if (isDragging.current) return;
                 const target = e.currentTarget;
-                const index = Math.round(target.scrollLeft / target.offsetWidth);
+                const firstCard = target.firstElementChild as HTMLElement;
+                if (!firstCard) return;
+                const cardWidth = firstCard.offsetWidth;
+                const index = Math.round(target.scrollLeft / cardWidth);
                 if (index !== currentIndex) setCurrentIndex(index);
               }}
               className="flex overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-4 cursor-grab active:cursor-grabbing scroll-smooth touch-pan-y"
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', cursor: 'grab' }}
             >
               {IMAGES.testimonials.map((src, i) => (
-                <div key={i} className="w-full md:w-[300px] shrink-0 px-4 md:px-2 snap-center select-none">
+                <div key={i} className="w-full md:w-[300px] shrink-0 px-4 md:px-2 snap-start select-none">
                   <div className="aspect-[9/16] bg-zinc-900 rounded-3xl overflow-hidden border border-zinc-800/50 opacity-95 hover:opacity-100 transition-all shadow-2xl shadow-red-900/20 pointer-events-none">
                     <img src={src} alt={`Depoimento ${i+1}`} className="w-full h-full object-cover" referrerPolicy="no-referrer" draggable="false" />
                   </div>
@@ -543,13 +402,17 @@ export default function App() {
                 <button 
                   key={i} 
                   onClick={() => {
+                    if (!carouselRef.current) return;
+                    const container = carouselRef.current;
+                    const firstCard = container.firstElementChild as HTMLElement;
+                    if (!firstCard) return;
+                    const cardWidth = firstCard.offsetWidth;
+                    
                     setCurrentIndex(i);
-                    if (carouselRef.current) {
-                      carouselRef.current.scrollTo({
-                        left: i * carouselRef.current.offsetWidth,
-                        behavior: 'smooth'
-                      });
-                    }
+                    container.scrollTo({
+                      left: i * cardWidth,
+                      behavior: 'smooth'
+                    });
                   }}
                   className={`w-[2px] h-3 transition-all shrink-0 cursor-pointer hover:bg-red-primary/50 ${currentIndex === i ? 'bg-red-primary h-5' : 'bg-zinc-800'}`}
                 />
@@ -650,6 +513,15 @@ export default function App() {
           <p className="text-sm md:text-base text-zinc-400">
             Ao adquirir o <span className="text-brand-red">Acesso VIP</span>, você não leva apenas o painel. Você recebe um arsenal completo para dominar o jogo.
           </p>
+        </div>
+
+        <div className="mb-12 max-w-4xl mx-auto rounded-2xl overflow-hidden border border-zinc-800 shadow-2xl shadow-red-900/10">
+          <img 
+            src="https://i.imgur.com/IYu9VIf.png" 
+            alt="Área de Membros" 
+            className="w-full h-auto"
+            referrerPolicy="no-referrer"
+          />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -852,10 +724,7 @@ export default function App() {
 
                 <button 
                   onClick={() => {
-                    const finalUrl = getCheckoutUrl(CHECKOUT_LINKS.premium);
-                    console.log("REDIRECT (Main):", finalUrl);
-                    trackEvent('initiate_checkout', { plan: 'premium' });
-                    window.location.href = finalUrl;
+                    window.location.href = CHECKOUT_LINKS.premium;
                   }}
                   className="block w-full btn-insane btn-main text-white py-5 rounded-xl text-center mb-8 cursor-pointer"
                 >
@@ -957,25 +826,6 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Debug Section (Temporary) */}
-      <div className="py-10 px-4 bg-zinc-950 border-t border-zinc-900 text-center">
-        <p className="text-[10px] text-zinc-600 uppercase font-bold mb-4">Área de Teste (Debug)</p>
-        <div className="flex flex-wrap justify-center gap-4">
-          <button 
-            onClick={() => { window.location.href = window.location.href; }}
-            className="px-4 py-2 bg-zinc-900 text-zinc-500 text-[10px] rounded hover:bg-zinc-800 transition-colors"
-          >
-            TESTE 1 (RELOAD)
-          </button>
-          <button 
-            onClick={() => { window.location.href = 'https://pay.insanexiters.shop/checkout/?utm_source=teste_direto'; }}
-            className="px-4 py-2 bg-zinc-900 text-zinc-500 text-[10px] rounded hover:bg-zinc-800 transition-colors"
-          >
-            TESTE 2 (UTM DIRETO)
-          </button>
-        </div>
-      </div>
-
       {/* Footer */}
       <motion.footer 
         initial={{ opacity: 0, y: 30 }}
@@ -1060,11 +910,7 @@ export default function App() {
               <div className="space-y-4">
                 <button 
                   onClick={() => {
-                    const finalUrl = getCheckoutUrl(CHECKOUT_LINKS.premiumDiscounted);
-                    console.log("REDIRECT (Exit Intent):", finalUrl);
-                    trackEvent('exit_intent_accept');
-                    trackEvent('initiate_checkout', { plan: 'premium_discounted_exit' });
-                    window.location.href = finalUrl;
+                    window.location.href = CHECKOUT_LINKS.premiumDiscounted;
                   }}
                   className="block w-full btn-insane btn-main text-white py-5 rounded-xl text-center font-black uppercase tracking-widest text-sm cursor-pointer"
                 >
