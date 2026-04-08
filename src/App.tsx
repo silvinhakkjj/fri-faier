@@ -321,7 +321,7 @@ export default function App() {
             className="btn-insane btn-main text-white py-5 px-8 rounded-2xl flex items-center justify-center gap-2 w-full max-w-md text-lg"
           >
             <Zap className="w-6 h-6 fill-current" />
-            Quero ter acesso agora
+            Quero ativar meu acesso agora
           </button>
         </div>
       </motion.section>
@@ -726,7 +726,7 @@ export default function App() {
                   href={CHECKOUT_LINKS.premium}
                   className="block w-full btn-insane btn-main text-white py-5 rounded-xl text-center mb-8 cursor-pointer no-underline"
                 >
-                  QUERO TER ACESSO AGORA
+                  Sim! Quero Amassar nos Apostados
                 </a>
               </div>
             </div>
@@ -818,7 +818,7 @@ export default function App() {
               className="flex items-center justify-center gap-3 w-full btn-insane btn-main py-4 rounded-2xl text-white shadow-[0_0_30px_rgba(255,0,0,0.6)] animate-bounce"
             >
               <Zap className="w-5 h-5 fill-current" />
-              <span className="font-black uppercase tracking-widest text-sm">Quero ter acesso agora</span>
+              <span className="font-black uppercase tracking-widest text-sm">Quero Amassar Agora</span>
             </button>
           </motion.div>
         )}
@@ -910,7 +910,7 @@ export default function App() {
                   href={CHECKOUT_LINKS.premiumDiscounted}
                   className="block w-full btn-insane btn-main text-white py-5 rounded-xl text-center font-black uppercase tracking-widest text-sm cursor-pointer no-underline"
                 >
-                  QUERO TER ACESSO AGORA POR R$ 19,90
+                  Sim! Quero o VIP por R$ 19,90
                 </a>
                 <button 
                   onClick={() => setShowExitPopup(false)}
