@@ -321,7 +321,7 @@ export default function App() {
             className="btn-insane btn-main text-white py-5 px-8 rounded-2xl flex items-center justify-center gap-2 w-full max-w-md text-lg"
           >
             <Zap className="w-6 h-6 fill-current" />
-            Quero ativar meu acesso agora
+            Quero ter acesso agora
           </button>
         </div>
       </motion.section>
@@ -726,7 +726,7 @@ export default function App() {
                   href={CHECKOUT_LINKS.premium}
                   className="block w-full btn-insane btn-main text-white py-5 rounded-xl text-center mb-8 cursor-pointer no-underline"
                 >
-                  Sim! Quero Amassar nos Apostados
+                  QUERO TER ACESSO AGORA
                 </a>
               </div>
             </div>
@@ -818,7 +818,7 @@ export default function App() {
               className="flex items-center justify-center gap-3 w-full btn-insane btn-main py-4 rounded-2xl text-white shadow-[0_0_30px_rgba(255,0,0,0.6)] animate-bounce"
             >
               <Zap className="w-5 h-5 fill-current" />
-              <span className="font-black uppercase tracking-widest text-sm">Quero Amassar Agora</span>
+              <span className="font-black uppercase tracking-widest text-sm">Quero ter acesso agora</span>
             </button>
           </motion.div>
         )}
@@ -852,7 +852,7 @@ export default function App() {
             className="inline-flex items-center gap-2 btn-insane btn-main text-white py-4 px-10 rounded-xl"
           >
             <Zap className="w-5 h-5 fill-current" />
-            Sim! Quero Amassar nos Apostados
+            QUERO TER ACESSO AGORA
           </button>
         </div>
         <div className="mt-20 pt-8 border-t border-zinc-800/50 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] text-zinc-500 uppercase font-bold tracking-widest">
@@ -910,7 +910,7 @@ export default function App() {
                   href={CHECKOUT_LINKS.premiumDiscounted}
                   className="block w-full btn-insane btn-main text-white py-5 rounded-xl text-center font-black uppercase tracking-widest text-sm cursor-pointer no-underline"
                 >
-                  Sim! Quero o VIP por R$ 19,90
+                  QUERO TER ACESSO AGORA POR R$ 19,90
                 </a>
                 <button 
                   onClick={() => setShowExitPopup(false)}
